@@ -14,16 +14,19 @@ jobs:
     steps:
       - name: Checkout this repo (workflow + patch)
         uses: actions/checkout@v4
+
       - name: Select latest Xcode
         uses: maxim-lobanov/setup-xcode@v1
         with:
           xcode-version: latest-stable
+
       - name: Install build tools
         run: |
           brew update
           brew install meson ninja pkg-config xcodegen qemu e2fsprogs
           echo "/opt/homebrew/opt/e2fsprogs/bin" >> "$GITHUB_PATH"
           echo "/opt/homebrew/opt/e2fsprogs/sbin" >> "$GITHUB_PATH"
+
       - name: Install Python modules needed by Meson (virglrenderer/Mesa)
         run: |
           /opt/homebrew/bin/python3 -m pip install --break-system-packages pyyaml mako packaging || /opt/homebrew/bin/python3 -m pip install pyyaml mako packaging
@@ -32,12 +35,14 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: aarch64-apple-ios
+
       - name: Clone Husk 3.1 and apply holodori patch
         run: |
           git clone --depth 1 --branch 3.1 https://github.com/Leviidev/Husk.git husk-src
           cd husk-src
           git apply "$GITHUB_WORKSPACE/holodori-vulkan.patch"
           git diff --stat
+
       - name: Restore build cache (lets a re-run resume finished stages)
         uses: actions/cache@v4
         with:
@@ -47,9 +52,11 @@ jobs:
           key: husk-build-v1-${{ hashFiles('holodori-vulkan.patch') }}
           restore-keys: |
             husk-build-v1-
+
       - name: Build Husk (official ci_build.sh)
         working-directory: husk-src
         run: ./scripts/ci_build.sh
+
       - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
