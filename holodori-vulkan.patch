@@ -1,0 +1,32 @@
+diff --git a/src/app/Husk/TLUnityView.swift b/src/app/Husk/TLUnityView.swift
+index 9879f87..f9ffafd 100644
+--- a/src/app/Husk/TLUnityView.swift
++++ b/src/app/Husk/TLUnityView.swift
+@@ -315,6 +315,9 @@ final class TLUnityUIView: UIView, UIKeyInput {
+                 husk_java_set_insets(Int32(inset.left * k), Int32(inset.top * k), Int32(inset.right * k), Int32(inset.bottom * k), 0)
+             }
+             attachWebHost(fresh: true)
++            // Vulkan for a Java-launched game that draws with it (a Unity title whose launcher activity is
++            // Java): MoltenVK, as for SDL and Unreal.
++            if let fw = Bundle.main.privateFrameworksPath { husk_ue4_set_vulkan(fw + "/MoltenVK.framework/MoltenVK") }
+             started = husk_java_launch(apk, dataDir, layerPtr, Int32(width), Int32(height), angle, ca)
+         case .gamemaker: started = husk_gamemaker_launch(apk, dataDir, layerPtr, Int32(width), Int32(height), angle, ca)
+         case .flutter:
+diff --git a/src/translation-layer-next/husk-tl-unity-app.c b/src/translation-layer-next/husk-tl-unity-app.c
+index b0ce536..4f19abb 100644
+--- a/src/translation-layer-next/husk-tl-unity-app.c
++++ b/src/translation-layer-next/husk-tl-unity-app.c
+@@ -338,7 +338,12 @@ static void *launch_thread(void *arg)
+         tl_audio_install();
+         ok = tl_gm_start(&cfg) && tl_gm_run();
+     } else if (A.engine == ENGINE_JAVA) {
+-        tl_log_line("java: starting %s as %s, %dx%d (runtime %s)", A.apk, A.package, A.width, A.height, g_java_root);
++        /* A Java-launched Unity game may still draw with Vulkan: its PlayerSettings tell libunity, not the
++         * activity, which graphics API to use. Offer MoltenVK as the SDL and UE4 branches do, or the guest
++         * is told libvulkan.so does not exist, and a Vulkan-first game is left with no graphics API it can
++         * initialise (Unity shows "Unable to initialize the Unity Engine Graphics API" and finishes). */
++        if (A.vulkan[0]) tl_vk_configure(A.vulkan, NULL, 0);
++        tl_log_line("java: starting %s as %s, %dx%d (runtime %s) (Vulkan: %s)", A.apk, A.package, A.width, A.height, g_java_root, A.vulkan[0] ? "yes" : "no");
+         ok = false;
+         if (g_java_root[0]) {
+             pthread_attr_t at; pthread_attr_init(&at); pthread_attr_setstacksize(&at, 64u << 20);
